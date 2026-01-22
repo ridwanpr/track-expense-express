@@ -8,13 +8,13 @@ export class AuthService {
   constructor(
     private readonly repo: AuthRepository,
     private readonly passwordService: PasswordPort,
-    private readonly tokenService: TokenPort
+    private readonly tokenService: TokenPort,
   ) {}
 
   async registerUser(data: RegisterUserDTO) {
     const exists = await this.repo.findByUsername(data.username);
     if (exists) {
-      throw new ResponseError(400, "User already exists");
+      throw new ResponseError(401, "User already exists");
     }
 
     const hashedPassword = await this.passwordService.hash(data.password, 11);
@@ -34,16 +34,13 @@ export class AuthService {
   async loginUser(data: LoginUserDTO) {
     const user = await this.repo.findByUsername(data.username);
     if (!user) {
-      throw new ResponseError(400, "Invalid Credentials");
+      throw new ResponseError(401, "Invalid Credentials");
     }
 
-    const isPasswordMatch = await this.passwordService.compare(
-      data.password,
-      user.password
-    );
+    const isPasswordMatch = await this.passwordService.compare(data.password, user.password);
 
     if (!isPasswordMatch) {
-      throw new ResponseError(400, "Invalid Credentials");
+      throw new ResponseError(401, "Invalid Credentials");
     }
 
     const payload = { userId: user.id };
@@ -66,7 +63,7 @@ export class AuthService {
     const userId = Number(payload.userId);
     const user = await this.repo.findUserById(userId);
     if (!user) {
-      throw new ResponseError(400, "User not Found");
+      throw new ResponseError(401, "User not Found");
     }
 
     const newAccessToken = await this.tokenService.generateAccessToken({
@@ -77,5 +74,15 @@ export class AuthService {
       accessToken: newAccessToken,
       user,
     };
+  }
+
+  async getUserInfo(userId: number) {
+    const user = this.repo.findUserById(userId);
+
+    if (!user) {
+      throw new ResponseError(401, "User not Found");
+    }
+
+    return user;
   }
 }

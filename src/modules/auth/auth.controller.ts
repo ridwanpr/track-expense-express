@@ -1,14 +1,14 @@
 import type { Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
 import { ResponseError } from "../../shared/errors/response.error.js";
+import type { AuthenticatedRequest } from "../../shared/types/request.type.js";
+import { stringToNumber } from "../../shared/utils/stringToNumber.js";
 
 export class AuthController {
   constructor(private readonly service: AuthService) {}
 
   create = async (req: Request, res: Response) => {
-    const { data, accessToken, refreshToken } = await this.service.registerUser(
-      req.body
-    );
+    const { data, accessToken, refreshToken } = await this.service.registerUser(req.body);
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -25,9 +25,7 @@ export class AuthController {
   };
 
   login = async (req: Request, res: Response) => {
-    const { data, accessToken, refreshToken } = await this.service.loginUser(
-      req.body
-    );
+    const { data, accessToken, refreshToken } = await this.service.loginUser(req.body);
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -61,14 +59,29 @@ export class AuthController {
       throw new ResponseError(401, "Not authorized, refresh token invalid");
     }
 
-    const { accessToken, user } = await this.service.refreshUserToken(
-      refreshToken
-    );
+    const { accessToken, user } = await this.service.refreshUserToken(refreshToken);
 
     res.status(200).json({
       message: "Refresh token success",
       data: user,
       accessToken,
+    });
+  };
+
+  me = async (req: AuthenticatedRequest, res: Response) => {
+    const reqUserId = req.user?.userId;
+
+    if (!reqUserId) {
+      throw new ResponseError(401, "User token unauthorized, please re-login");
+    }
+
+    const userId = stringToNumber(reqUserId, 400, "User id not valid");
+
+    const user = await this.service.getUserInfo(userId);
+
+    res.status(200).json({
+      message: "Successfully get user info",
+      data: user,
     });
   };
 }

@@ -27,7 +27,7 @@ app.use(trimMiddleware);
 
 const container = createContainer();
 
-const authRouter = createAuthRoutes(container.authController);
+const authRouter = createAuthRoutes(container.authController, container.tokenService);
 const workspaceRouter = createWorkspaceRoutes(
   container.workspaceController,
   container.tokenService,
